@@ -1,0 +1,32 @@
+{
+  "name": "blackwall-mcp",
+  "version": "1.0.0",
+  "description": "BLACK_WALL MCP server — a pre-action risk check your AI agent calls before any irreversible action (send email, move money, run SQL, delete data).",
+  "type": "module",
+  "bin": {
+    "blackwall-mcp": "index.mjs"
+  },
+  "files": [
+    "index.mjs",
+    "README.md"
+  ],
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ai-agents",
+    "guardrails",
+    "ai-safety",
+    "blackwall"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.23.8"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
