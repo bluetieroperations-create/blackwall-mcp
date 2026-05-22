@@ -1,19 +1,19 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.json",
-  "name": "io.github.bluetieroperations-create/blackwall",
+  "name": "com.blackwalltier/blackwall",
   "description": "Pre-action risk gate for AI agents. One tool, forecast, that an agent calls before any irreversible action (send money, run SQL, delete data, post content). Returns a risk score, reversibility class, and a gate: proceed / confirm / human-required.",
   "repository": {
     "url": "https://github.com/bluetieroperations-create/blackwall-mcp",
     "source": "github"
   },
-  "version": "1.0.1",
+  "version": "1.0.2",
   "websiteUrl": "https://blackwalltier.com",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "blackwall-mcp",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "transport": { "type": "stdio" },
       "environmentVariables": [
         {
