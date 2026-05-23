@@ -1,0 +1,24 @@
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    required: ["blackwallApiKey"]
+    properties:
+      blackwallApiKey:
+        type: string
+        title: BLACKWALL_API_KEY
+        description: Your BLACK_WALL API key (bw_live_...) from https://blackwalltier.com/dashboard/keys
+      blackwallMode:
+        type: string
+        enum: ["enforce", "observe"]
+        default: "enforce"
+        description: "enforce (default, gate actions) or observe (log the verdict, never block)"
+  commandFunction: |
+    (config) => ({
+      command: 'npx',
+      args: ['-y', 'blackwall-mcp'],
+      env: Object.assign(
+        { BLACKWALL_API_KEY: config.blackwallApiKey },
+        config.blackwallMode ? { BLACKWALL_MODE: config.blackwallMode } : {}
+      )
+    })
