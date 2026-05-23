@@ -1,7 +1,7 @@
 {
-  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.json",
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "com.blackwalltier/blackwall",
-  "description": "Pre-action risk gate for AI agents. One tool, forecast, that an agent calls before any irreversible action (send money, run SQL, delete data, post content). Returns a risk score, reversibility class, and a gate: proceed / confirm / human-required.",
+  "description": "Pre-action risk gate: AI agents call before any irreversible action (money, SQL, delete).",
   "repository": {
     "url": "https://github.com/bluetieroperations-create/blackwall-mcp",
     "source": "github"
