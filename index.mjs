@@ -3,7 +3,7 @@
  * BLACK_WALL MCP server
  * ---------------------
  * Exposes BLACK_WALL's pre-action risk check as an MCP tool so any MCP-compatible
- * host (Claude Desktop, Claude Code, Cursor, ChatGPT Apps SDK, etc.) can let its
+ * host (Claude Desktop, Claude Code, Cursor, Windsurf, etc.) can let its
  * agent ask "is this action safe?" BEFORE doing something irreversible.
  *
  * Config (env):
