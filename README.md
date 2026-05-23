@@ -1,8 +1,8 @@
 # blackwall-mcp
 
-**A guardrail for AI agents, as an MCP server.** Your agent calls one tool — `forecast` — before any irreversible action (send email, move money, run SQL, delete data, post content). It gets back a risk score (0–100), a `GO` / `CAUTION` / `STOP` recommendation, and named red flags in ~sub-second.
+**A guardrail for AI agents, as an MCP server.** Your agent calls one tool — `forecast` — before any irreversible action (send email, move money, run SQL, delete data, post content). It gets back a risk score (0–100), a reversibility class, a `GO` / `CAUTION` / `STOP` recommendation, and named red flags in a few seconds (~4-8s).
 
-Works in any MCP host: **Claude Desktop, Claude Code, Cursor, Windsurf, ChatGPT (Apps SDK)**, and any agent framework with MCP support.
+Works in any MCP host: **Claude Desktop, Claude Code, Cursor, Windsurf**, and any agent framework with MCP support.
 
 > The wall between your agent and disaster. A BLUETIER product.
 
@@ -76,7 +76,7 @@ Once added, instruct your agent: *"Before any irreversible action, call the `for
 | `context` | object | — | Optional: `{ agent_role, user_intent, environment }` |
 | `depth` | `standard` \| `deep` | — | Analysis depth. `standard` is the default. |
 
-**Returns:** recommendation (`GO`/`CAUTION`/`STOP`), `risk_score` (0–100), `confidence`, `red_flags[]`, `predicted_result`, `alternative_actions[]`.
+**Returns:** recommendation (`GO`/`CAUTION`/`STOP`), `risk_score` (0–100), `reversibility` (class + rollback cost), `gate` (proceed/confirm/human-required), `confidence`, `red_flags[]`, `predicted_result`, `alternative_actions[]`.
 
 ### Example
 
