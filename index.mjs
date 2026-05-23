@@ -67,7 +67,7 @@ server.registerTool(
       depth: z
         .enum(['standard', 'deep'])
         .optional()
-        .describe("Analysis depth. 'standard' (~600ms, default) or 'deep' (more thorough, costs more)."),
+        .describe("Analysis depth. 'standard' (default) or 'deep' (more thorough, costs more)."),
     },
   },
   async ({ action, inputs, context, depth }) => {
