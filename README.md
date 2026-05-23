@@ -11,7 +11,7 @@ Works in any MCP host: **Claude Desktop, Claude Code, Cursor, Windsurf**, and an
 ## 1. Get an API key
 
 Sign up free at **https://blackwalltier.com** → Dashboard → API keys → Create key.
-Free tier: 100 forecasts/month, no card. Your key looks like `bw_live_…`.
+Free tier: ~100 forecasts/month, no card. Your key looks like `bw_live_…`.
 
 ## 2. Add the server to your MCP host
 
@@ -95,7 +95,7 @@ Guidance: DO NOT take this action. Surface the red flags to the user.
 
 ## Observe mode — try it with zero risk
 
-Not ready to let a guardrail block your agents? Start in **observe mode**. It scores and logs every action but **never tells the agent to stop** — your agents behave exactly as they do today. After a week, run the digest and see what it *would* have caught.
+Not ready to let a guardrail block your agents? Start in **observe mode**. It scores and logs every action but **never tells the agent to stop** — your agents behave exactly as they do today. After a week, review your dashboard and see what it *would* have caught.
 
 ```json
 {
