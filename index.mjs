@@ -19,10 +19,13 @@ import { z } from 'zod';
 const API_KEY = process.env.BLACKWALL_API_KEY;
 const BASE_URL = (process.env.BLACKWALL_BASE_URL || 'https://blackwalltier.com').replace(/\/$/, '');
 
+// Don't exit when the key is missing — the server still starts and exposes the
+// `forecast` tool for introspection (tools/list). The key is required only when
+// `forecast` is actually called (checked in the handler below). This lets MCP
+// directories/scanners verify the server boots without needing credentials.
 if (!API_KEY) {
   // Write to stderr — stdout is reserved for the MCP protocol.
-  console.error('[blackwall-mcp] Missing BLACKWALL_API_KEY. Get one at https://blackwalltier.com/dashboard/keys');
-  process.exit(1);
+  console.error('[blackwall-mcp] No BLACKWALL_API_KEY set — server starts, but forecast calls will fail until you set one (https://blackwalltier.com/dashboard/keys).');
 }
 
 // 'observe' = score + log everything but NEVER tell the agent to stop (zero behavior change,
@@ -71,6 +74,12 @@ server.registerTool(
     },
   },
   async ({ action, inputs, context, depth }) => {
+    if (!API_KEY) {
+      return {
+        isError: true,
+        content: [{ type: 'text', text: 'BLACK_WALL: missing BLACKWALL_API_KEY. Set it in your MCP host config — free key at https://blackwalltier.com/dashboard/keys' }],
+      };
+    }
     let res;
     try {
       res = await fetch(`${BASE_URL}/api/v1/forecast`, {

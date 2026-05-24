@@ -1,6 +1,6 @@
 {
   "name": "blackwall-mcp",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "mcpName": "com.blackwalltier/blackwall",
   "description": "BLACK_WALL MCP server — a pre-action risk check your AI agent calls before any irreversible action (send email, move money, run SQL, delete data).",
   "type": "module",
