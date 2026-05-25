@@ -34,7 +34,7 @@ const MODE = (process.env.BLACKWALL_MODE || 'enforce').toLowerCase() === 'observ
 
 const server = new McpServer({
   name: 'blackwall',
-  version: '1.0.0',
+  version: '1.0.8',
 });
 
 server.registerTool(
@@ -131,11 +131,11 @@ server.registerTool(
       MODE === 'observe'
         ? '👁 OBSERVE MODE — logged for review, not enforced. Proceed normally.'
         : gate === 'HUMAN_REQUIRED'
-          ? 'HUMAN REQUIRED — high-risk and hard to undo. Do not act autonomously; escalate to a human.'
+          ? 'HUMAN REQUIRED — high-risk and hard to undo. The action has NOT run; do not act autonomously, escalate to a human, and do not build on it.'
           : gate === 'CONFIRM'
-            ? 'CONFIRM with the user before proceeding.'
+            ? 'CONFIRM with the user before proceeding. The action has NOT run yet.'
             : data.recommendation === 'STOP'
-              ? 'DO NOT take this action. Surface the red flags to the user.'
+              ? 'DO NOT take this action — it has NOT been executed. Surface the red flags and pivot to a safer alternative; do not build on it.'
               : 'Cleared to proceed.';
 
     const revLine = rev?.class
