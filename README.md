@@ -1,5 +1,7 @@
 # blackwall-mcp
 
+[![Glama quality](https://glama.ai/mcp/servers/bluetieroperations-create/blackwall-mcp/badge)](https://glama.ai/mcp/servers/bluetieroperations-create/blackwall-mcp)
+
 **A guardrail for AI agents, as an MCP server.** Your agent calls one tool — `forecast` — before any irreversible action (send email, move money, run SQL, delete data, post content). It gets back a risk score (0–100), a reversibility class, a `GO` / `CAUTION` / `STOP` recommendation, and named red flags in a few seconds (~4-8s).
 
 Works in any MCP host: **Claude Desktop, Claude Code, Cursor, Windsurf**, and any agent framework with MCP support.
