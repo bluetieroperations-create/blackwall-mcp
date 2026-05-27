@@ -116,6 +116,26 @@ Not ready to let a guardrail block your agents? Start in **observe mode**. It sc
 
 Then see *"what your agents almost did"* in your dashboard. Flip `BLACKWALL_MODE` to `enforce` (or just remove it — enforce is the default) when you're ready to actually block.
 
+## Two tools
+
+The server exposes **two MCP tools**:
+
+- **`forecast`** — pre-action risk check. Returns `GO` / `CAUTION` / `STOP`, risk score, named red flags, reversibility class, and a verifiable receipt.
+- **`observe`** — post-action outcome report. Tells BLACK_WALL what actually happened after the action ran (or after the agent obeyed a STOP verdict). Closes the loop so the system can track prediction accuracy over time. FREE — no tokens charged.
+
+Wire your agent to call `forecast` before any irreversible action, then call `observe` afterwards with the `forecast_id` from the original response. `observe` accepts an `outcome_class` (`matched` / `over_scope` / `under_scope` / `no_op` / `diverged` / `aborted`) and optional `divergence_severity` and `details`. See the `forecast` example below; the same wiring applies to `observe`.
+
+## Decision receipts (cryptographic, verifiable offline)
+
+Every `forecast` response now includes a `receipt` field — an Ed25519 signature over canonical SHA-256 hashes of the request + response. Anyone with the published public key can verify offline that BLACK_WALL signed off on a specific (request, response) pair, without trusting our servers.
+
+- Published keys: **https://blackwalltier.com/.well-known/blackwall-signing-keys.json** (stable, cacheable)
+- Stateless verify endpoint: **`POST https://blackwalltier.com/api/v1/receipts/verify`** with `{ envelope, request_body, response_body }`
+- Hashes only — BLACK_WALL never stores the raw request/response bodies, so receipts give cryptographic audit without payload exposure
+- Free-tier retention: 90 days. Paid: indefinite.
+
+The MCP server surfaces the receipt id in its tool output so your agent can log it for later replay / audit.
+
 ## Config reference
 
 | Env var | Required | Default | Notes |

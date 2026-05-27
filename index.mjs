@@ -34,7 +34,7 @@ const MODE = (process.env.BLACKWALL_MODE || 'enforce').toLowerCase() === 'observ
 
 const server = new McpServer({
   name: 'blackwall',
-  version: '1.0.8',
+  version: '1.0.10',
 });
 
 server.registerTool(
@@ -142,6 +142,13 @@ server.registerTool(
       ? `\nReversibility: ${rev.class}${rev.rollback_cost != null ? ` (rollback cost ${rev.rollback_cost}/100)` : ''}`
       : '';
 
+    // Verifiable decision receipt — Ed25519 signature anyone can verify offline
+    // against the published public key at /.well-known/blackwall-signing-keys.json.
+    // Surface the receipt id so the agent can log it for later audit/replay.
+    const receiptLine = data.receipt?.id
+      ? `\nReceipt: ${data.receipt.id} (verifiable at ${data.receipt.verify_url ?? 'https://blackwalltier.com/api/v1/receipts/verify'})`
+      : '';
+
     const header =
       MODE === 'observe'
         ? `👁 BLACK_WALL (observe): would be ${data.recommendation} — risk ${data.risk_score}/100${gate ? ` · gate ${gate}` : ''}`
@@ -151,6 +158,7 @@ server.registerTool(
       header +
       (data.confidence != null ? ` (confidence ${data.confidence})` : '') +
       revLine +
+      receiptLine +
       `\n\nRed flags:\n${flagLines}` +
       `\n\nLatency: ${data.latency_ms ?? '?'}ms · tokens charged: ${data.tokens_charged ?? '?'}` +
       `\n\nGuidance: ${guidance}`;
@@ -159,6 +167,140 @@ server.registerTool(
       content: [
         { type: 'text', text: summary },
         { type: 'text', text: 'Raw response:\n```json\n' + JSON.stringify(data, null, 2) + '\n```' },
+      ],
+    };
+  }
+);
+
+// ----------------------------------------------------------------------------
+// observe — post-action outcome capture (closes the loop with forecast)
+// ----------------------------------------------------------------------------
+//
+// Call this AFTER an action runs (or after deciding NOT to run it because of a
+// STOP verdict) to report what actually happened. Black_Wall compares your
+// observation to the original prediction to track accuracy over time. FREE —
+// no tokens charged.
+//
+// The agent should call `observe` whenever it has a forecast_id from an earlier
+// `forecast` call AND it knows the actual outcome. Skip if you don't have a
+// forecast_id to associate. Multiple observations per forecast: last write wins
+// for now; full audit history will move to a dedicated observations table later.
+//
+server.registerTool(
+  'observe',
+  {
+    title: 'BLACK_WALL post-action observation',
+    description:
+      'Call this AFTER an action runs (or after deciding NOT to run it because BLACK_WALL ' +
+      'returned STOP/HUMAN_REQUIRED) to report what actually happened. Closes the loop with the ' +
+      'earlier forecast — BLACK_WALL compares your observation to the prediction to track ' +
+      'accuracy and improve future forecasts. FREE — no tokens charged. Always call this if you ' +
+      'have a forecast_id from a recent `forecast` call.',
+    inputSchema: {
+      forecast_id: z
+        .string()
+        .describe(
+          'The id returned by the matching `forecast` call (the top-level `id` field in that response). ' +
+          'Required.'
+        ),
+      outcome_class: z
+        .enum(['matched', 'over_scope', 'under_scope', 'no_op', 'diverged', 'aborted'])
+        .optional()
+        .describe(
+          "How the actual outcome compared to the prediction. " +
+          "'matched' = exactly as predicted. " +
+          "'over_scope' = affected MORE than predicted (e.g. DELETE hit 1247 rows when 1 was expected). " +
+          "'under_scope' = affected less than predicted. " +
+          "'no_op' = action ran but had no effect. " +
+          "'diverged' = result was qualitatively different (e.g. unexpected error class). " +
+          "'aborted' = action was NOT taken (use this when you obeyed a STOP/HUMAN_REQUIRED verdict)."
+        ),
+      divergence_severity: z
+        .enum(['none', 'low', 'medium', 'high', 'critical'])
+        .optional()
+        .describe(
+          "How bad the divergence was. Use 'none' for 'matched' or 'aborted' outcomes."
+        ),
+      actual_targets: z
+        .array(z.string())
+        .optional()
+        .describe(
+          'IDs / paths / hashes of what was actually affected (e.g. user_ids, file paths, ' +
+          'transaction hashes, row counts as strings). Helps reconstruct the event later.'
+        ),
+      details: z
+        .string()
+        .optional()
+        .describe(
+          'Free-form details: what actually happened, error messages, observed side effects, ' +
+          'anything that helps trace the event back later.'
+        ),
+    },
+  },
+  async ({ forecast_id, outcome_class, divergence_severity, actual_targets, details }) => {
+    if (!API_KEY) {
+      return {
+        isError: true,
+        content: [{ type: 'text', text: 'BLACK_WALL: missing BLACKWALL_API_KEY. Set it in your MCP host config.' }],
+      };
+    }
+
+    // Pack the structured fields into actual_outcome (jsonb). The endpoint
+    // accepts any jsonb shape; the well-known field names here let the admin
+    // dashboard render the outcome consistently.
+    const actualOutcome = {
+      ...(outcome_class ? { outcome_class } : {}),
+      ...(divergence_severity ? { divergence_severity } : {}),
+      ...(actual_targets ? { actual_targets } : {}),
+      ...(details ? { details } : {}),
+      reported_via: 'mcp_observe',
+      reported_at: new Date().toISOString(),
+    };
+
+    let res;
+    try {
+      res = await fetch(`${BASE_URL}/api/v1/forecast/${encodeURIComponent(forecast_id)}/outcome`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          actual_outcome: actualOutcome,
+          customer_notes: details ?? null,
+        }),
+      });
+    } catch (err) {
+      return {
+        isError: true,
+        content: [{ type: 'text', text: `BLACK_WALL observe request failed (network): ${err?.message ?? err}` }],
+      };
+    }
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = data?.message || data?.error || `HTTP ${res.status}`;
+      if (res.status === 404) {
+        return {
+          isError: true,
+          content: [{ type: 'text', text: `BLACK_WALL observe: forecast ${forecast_id} not found (or owned by a different account). Double-check the forecast_id from your earlier forecast response.` }],
+        };
+      }
+      return {
+        isError: true,
+        content: [{ type: 'text', text: `BLACK_WALL observe error (${res.status}): ${msg}` }],
+      };
+    }
+
+    const summary =
+      `✓ Observation recorded for forecast ${forecast_id}` +
+      (outcome_class ? ` · ${outcome_class}` : '') +
+      (divergence_severity && divergence_severity !== 'none' ? ` (severity ${divergence_severity})` : '') +
+      `.`;
+
+    return {
+      content: [
+        { type: 'text', text: summary },
       ],
     };
   }
