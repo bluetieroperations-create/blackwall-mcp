@@ -9,12 +9,19 @@
  * Config (env):
  *   BLACKWALL_API_KEY   required — your bw_live_… key from blackwalltier.com/dashboard/keys
  *   BLACKWALL_BASE_URL  optional — defaults to https://blackwalltier.com
+ *   BLACKWALL_MODE      optional — 'enforce' (default) or 'observe'
  *
  * Run: BLACKWALL_API_KEY=bw_live_xxx node index.mjs   (stdio transport)
+ *
+ * Note: HTTP/transport logic for forecast & observe lives in ./lib so the same
+ * client code can be reused by non-MCP consumers (e.g. an ElizaOS plugin).
+ * This file only wires the lib into MCP `content` envelopes.
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+import { forecast } from './lib/forecast.mjs';
+import { observe } from './lib/observe.mjs';
 
 const API_KEY = process.env.BLACKWALL_API_KEY;
 const BASE_URL = (process.env.BLACKWALL_BASE_URL || 'https://blackwalltier.com').replace(/\/$/, '');
@@ -34,7 +41,7 @@ const MODE = (process.env.BLACKWALL_MODE || 'enforce').toLowerCase() === 'observ
 
 const server = new McpServer({
   name: 'blackwall',
-  version: '1.0.10',
+  version: '1.1.0',
 });
 
 server.registerTool(
@@ -80,35 +87,21 @@ server.registerTool(
         content: [{ type: 'text', text: 'BLACK_WALL: missing BLACKWALL_API_KEY. Set it in your MCP host config — free key at https://blackwalltier.com/dashboard/keys' }],
       };
     }
-    let res;
+
+    let data;
     try {
-      res = await fetch(`${BASE_URL}/api/v1/forecast`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action,
-          inputs,
-          ...(context ? { context } : {}),
-          ...(depth ? { options: { depth } } : {}),
-        }),
-      });
+      data = await forecast(
+        { action, inputs, context, depth },
+        { apiKey: API_KEY, baseUrl: BASE_URL }
+      );
     } catch (err) {
+      // Distinguish HTTP errors from network errors using the .status field set by the lib.
+      const text = err?.status
+        ? `BLACK_WALL error (${err.status}): ${err.message.replace(/^BLACK_WALL forecast error \(\d+\):\s*/, '')}`
+        : `BLACK_WALL request failed: ${err?.message ?? err}`;
       return {
         isError: true,
-        content: [{ type: 'text', text: `BLACK_WALL request failed (network): ${err?.message ?? err}` }],
-      };
-    }
-
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      const msg = data?.message || data?.error || `HTTP ${res.status}`;
-      return {
-        isError: true,
-        content: [{ type: 'text', text: `BLACK_WALL error (${res.status}): ${msg}` }],
+        content: [{ type: 'text', text }],
       };
     }
 
@@ -245,50 +238,25 @@ server.registerTool(
       };
     }
 
-    // Pack the structured fields into actual_outcome (jsonb). The endpoint
-    // accepts any jsonb shape; the well-known field names here let the admin
-    // dashboard render the outcome consistently.
-    const actualOutcome = {
-      ...(outcome_class ? { outcome_class } : {}),
-      ...(divergence_severity ? { divergence_severity } : {}),
-      ...(actual_targets ? { actual_targets } : {}),
-      ...(details ? { details } : {}),
-      reported_via: 'mcp_observe',
-      reported_at: new Date().toISOString(),
-    };
-
-    let res;
     try {
-      res = await fetch(`${BASE_URL}/api/v1/forecast/${encodeURIComponent(forecast_id)}/outcome`, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          actual_outcome: actualOutcome,
-          customer_notes: details ?? null,
-        }),
-      });
+      await observe(
+        forecast_id,
+        { outcome_class, divergence_severity, actual_targets, details },
+        { apiKey: API_KEY, baseUrl: BASE_URL, reportedVia: 'mcp_observe' }
+      );
     } catch (err) {
-      return {
-        isError: true,
-        content: [{ type: 'text', text: `BLACK_WALL observe request failed (network): ${err?.message ?? err}` }],
-      };
-    }
-
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      const msg = data?.message || data?.error || `HTTP ${res.status}`;
-      if (res.status === 404) {
+      if (err?.status === 404) {
         return {
           isError: true,
           content: [{ type: 'text', text: `BLACK_WALL observe: forecast ${forecast_id} not found (or owned by a different account). Double-check the forecast_id from your earlier forecast response.` }],
         };
       }
+      const text = err?.status
+        ? `BLACK_WALL observe error (${err.status}): ${err.message.replace(/^BLACK_WALL observe error \(\d+\):\s*/, '')}`
+        : `BLACK_WALL observe request failed: ${err?.message ?? err}`;
       return {
         isError: true,
-        content: [{ type: 'text', text: `BLACK_WALL observe error (${res.status}): ${msg}` }],
+        content: [{ type: 'text', text }],
       };
     }
 
