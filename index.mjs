@@ -41,7 +41,7 @@ const MODE = (process.env.BLACKWALL_MODE || 'enforce').toLowerCase() === 'observ
 
 const server = new McpServer({
   name: 'blackwall',
-  version: '1.1.0',
+  version: '1.1.1',
 });
 
 server.registerTool(
@@ -95,13 +95,21 @@ server.registerTool(
         { apiKey: API_KEY, baseUrl: BASE_URL }
       );
     } catch (err) {
-      // Distinguish HTTP errors from network errors using the .status field set by the lib.
-      const text = err?.status
-        ? `BLACK_WALL error (${err.status}): ${err.message.replace(/^BLACK_WALL forecast error \(\d+\):\s*/, '')}`
-        : `BLACK_WALL request failed: ${err?.message ?? err}`;
+      // FAIL CLOSED. forecast() throws on network failure, timeout, non-2xx, OR a 2xx with
+      // no usable verdict. A risk gate must never imply "proceed" on its own failure — in
+      // enforce OR observe mode — so surface every such case as STOP / HUMAN REQUIRED.
+      const reason = err?.status
+        ? `${err.message.replace(/^BLACK_WALL forecast error \(\d+\):\s*/, '')} (HTTP ${err.status})`
+        : (err?.message ?? String(err));
       return {
         isError: true,
-        content: [{ type: 'text', text }],
+        content: [{
+          type: 'text',
+          text:
+            '🛑 BLACK_WALL UNAVAILABLE — could not obtain a risk verdict. Treat this as ' +
+            'STOP / HUMAN REQUIRED: do not take the action autonomously; confirm with a human.\n' +
+            `Reason: ${reason}`,
+        }],
       };
     }
 
