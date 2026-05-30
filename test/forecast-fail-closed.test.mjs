@@ -65,11 +65,20 @@ test('FAILS CLOSED (times out) when the backend hangs, instead of blocking forev
       });
     });
   // 1000ms is the enforced floor (Math.max(1000, …)); a lower value clamps up to it.
+  // AbortSignal.timeout() uses an UNREF'd timer, so with nothing else holding the
+  // event loop open a fast runner (CI) can go idle and exit before it fires —
+  // cancelling this still-pending test. A ref'd interval keeps the loop alive
+  // until the timeout resolves; cleared in finally so it never leaks.
+  const keepAlive = setInterval(() => {}, 50);
   const started = process.hrtime.bigint();
-  await assert.rejects(
-    forecast({ action: 'delete_database', inputs: {} }, { ...OPTS, fetch: hangingFetch, timeoutMs: 1000 }),
-    /timed out after 1000ms/i
-  );
+  try {
+    await assert.rejects(
+      forecast({ action: 'delete_database', inputs: {} }, { ...OPTS, fetch: hangingFetch, timeoutMs: 1000 }),
+      /timed out after 1000ms/i
+    );
+  } finally {
+    clearInterval(keepAlive);
+  }
   const elapsedMs = Number(process.hrtime.bigint() - started) / 1e6;
   assert.ok(elapsedMs < 2500, `should abort near the 1000ms timeout, took ${elapsedMs.toFixed(0)}ms`);
 });
