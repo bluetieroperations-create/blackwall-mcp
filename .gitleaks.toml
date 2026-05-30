@@ -1,0 +1,27 @@
+title = "BlueTier / Black_Wall — gitleaks config"
+
+# Start from gitleaks' full built-in ruleset, then tune for this repo.
+[extend]
+useDefault = true
+
+# --- Precise rule for the real threat: live Black_Wall API keys ---
+# Format is bw_live_ followed by 32 lowercase hex chars. This must NEVER
+# be committed. (Test/doc keys like bw_test_key or bw_live_xxx are ignored.)
+[[rules]]
+id = "blackwall-live-key"
+description = "Black_Wall live API key (bw_live_ + 32 hex)"
+regex = '''bw_live_[0-9a-f]{32}'''
+keywords = ["bw_live_"]
+
+  [rules.allowlist]
+  description = "documentation/test placeholders, not real keys"
+  regexes = ['''bw_live_(YOUR|xxx|x{3,}|\.\.\.|<)''']
+
+# --- Repo-wide allowlist: known non-secrets ---
+[allowlist]
+description = "known non-secrets in this repo"
+regexes = [
+  # Doc/test placeholders for the Black_Wall key.
+  '''bw_live_(YOUR|xxx|x{3,}|\.\.\.|<)''',
+  '''bw_test_key''',
+]

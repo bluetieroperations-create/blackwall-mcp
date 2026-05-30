@@ -19,7 +19,9 @@
     "README.md"
   ],
   "scripts": {
-    "start": "node index.mjs"
+    "start": "node index.mjs",
+    "prepare": "git config core.hooksPath .githooks",
+    "secrets:scan": "gitleaks git --no-banner --config .gitleaks.toml"
   },
   "keywords": [
     "mcp",
