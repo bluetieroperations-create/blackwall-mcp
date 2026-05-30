@@ -17,6 +17,13 @@ keywords = ["bw_live_"]
   description = "documentation/test placeholders, not real keys"
   regexes = ['''bw_live_(YOUR|xxx|x{3,}|\.\.\.|<)''']
 
+# Supabase access / personal token (sbp_) — defense-in-depth, same rule as forecast-app.
+[[rules]]
+id = "supabase-access-token"
+description = "Supabase access/personal token (sbp_)"
+regex = '''sbp_[a-z0-9]{40}'''
+keywords = ["sbp_"]
+
 # --- Repo-wide allowlist: known non-secrets ---
 [allowlist]
 description = "known non-secrets in this repo"
