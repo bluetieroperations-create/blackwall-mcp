@@ -125,6 +125,48 @@ The server exposes **two MCP tools**:
 
 Wire your agent to call `forecast` before any irreversible action, then call `observe` afterwards with the `forecast_id` from the original response. `observe` accepts an `outcome_class` (`matched` / `over_scope` / `under_scope` / `no_op` / `diverged` / `aborted`) and optional `divergence_severity` and `details`. See the `forecast` example below; the same wiring applies to `observe`.
 
+## Use it in code — the `gate()` control (any JS/TS agent)
+
+Running an agent in Node (LangChain, a custom loop, ElizaOS, a cron job)? You don't need an MCP host — call BLACK_WALL straight from the library, and let **`gate()`** make the check *impossible to skip*. One wrap forecasts the action, enforces the verdict (**fails closed** on `STOP` / unknown / unreachable), runs your side effect only when allowed, and reports the real outcome with `observe` automatically.
+
+```bash
+npm i blackwall-mcp
+```
+
+```js
+import { gate, BlackWallBlocked } from 'blackwall-mcp/lib/gate';
+
+// Wrap ANY risky action in a few lines. BLACKWALL_API_KEY lives in the env.
+try {
+  const { result } = await gate(
+    { action: 'run_sql', inputs: { statement: sql }, context: { user_intent } },
+    () => db.query(sql),                        // your real side effect — only runs if allowed
+    { onCaution: (v) => confirmWithHuman(v) },  // CAUTION needs a yes; default = block
+  );
+  // ...use result
+} catch (e) {
+  if (e instanceof BlackWallBlocked) {
+    // STOP, unconfirmed CAUTION, or forecast unavailable → the action NEVER ran
+    console.error('Blocked:', e.reason, e.verdict?.red_flags);
+  } else throw e; // a real error thrown by your action
+}
+```
+
+**Fails closed by design.** If no verdict can be obtained (network / auth / timeout), the action does **not** run unless you explicitly pass `failOpen: true`. A risk gate that fails open is not a risk gate. The loop closes itself — `gate()` calls `observe` with the actual outcome (`matched` / `diverged` / `aborted`), so your forecasts sharpen over time.
+
+Prefer the lower-level pieces? They're exported too:
+
+```js
+import { forecast, observe } from 'blackwall-mcp/lib';
+
+const v = await forecast({ action: 'make_payment', inputs: { amount_usd: 50000 } });
+if (v.recommendation === 'STOP') throw new Error('halt');
+// ... take the action ...
+await observe(v.id, { outcome_class: 'matched' });
+```
+
+Runnable demo: [`examples/gate-quickstart.mjs`](examples/gate-quickstart.mjs).
+
 ## Decision receipts (cryptographic, verifiable offline)
 
 Every `forecast` response now includes a `receipt` field — an Ed25519 signature over canonical SHA-256 hashes of the request + response. Anyone with the published public key can verify offline that BLACK_WALL signed off on a specific (request, response) pair, without trusting our servers.
