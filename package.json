@@ -11,6 +11,7 @@
     ".": "./index.mjs",
     "./lib/forecast": "./lib/forecast.mjs",
     "./lib/observe": "./lib/observe.mjs",
+    "./lib/gate": "./lib/gate.mjs",
     "./lib": "./lib/index.mjs"
   },
   "files": [
@@ -20,6 +21,7 @@
   ],
   "scripts": {
     "start": "node index.mjs",
+    "test": "node --test",
     "prepare": "git config core.hooksPath .githooks",
     "secrets:scan": "gitleaks git --no-banner --config .gitleaks.toml"
   },
