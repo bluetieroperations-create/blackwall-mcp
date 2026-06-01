@@ -32,7 +32,7 @@ export function buildServer({ apiKey, baseUrl, mode } = {}) {
   const MODE = String(mode || 'enforce').toLowerCase() === 'observe' ? 'observe' : 'enforce';
   const API_KEY = apiKey;
 
-  const server = new McpServer({ name: 'blackwall', version: '1.3.1' });
+  const server = new McpServer({ name: 'blackwall', version: '1.4.0' });
 
   server.registerTool(
     'forecast',

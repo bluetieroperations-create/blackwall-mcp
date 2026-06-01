@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.4.0 — 2026-06-01
+
+### Added
+- **Proxy-aware egress.** `forecast()` / `observe()` now route through an HTTP
+  CONNECT proxy when `HTTPS_PROXY` (or `HTTP_PROXY`) is set, honoring `NO_PROXY`.
+  Node's `fetch` ignores those env vars, so in default-deny / proxy-only-egress
+  networks (NVIDIA NemoClaw sandboxes, corporate proxies) the gate's request was
+  silently dropped. Zero new dependencies (node:net + node:tls CONNECT tunnel),
+  so the OpenClaw blueprint bundle stays tiny. Proven against a real local
+  CONNECT proxy + TLS target (`test/proxy-fetch.test.mjs`).
+
 ## 1.3.1 — 2026-06-01
 
 ### Fixed
