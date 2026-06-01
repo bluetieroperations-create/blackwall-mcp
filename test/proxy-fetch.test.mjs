@@ -128,7 +128,71 @@ test('rejects when the abort signal is already aborted', async (t) => {
   );
 });
 
+test('SECURITY: verifies the target cert by default (rejects self-signed)', async (t) => {
+  if (!haveTls) return t.skip('openssl/setup unavailable');
+  // Production path: NO opts.tls override => tls.connect default rejectUnauthorized:true.
+  // Against our self-signed target this MUST fail — proving the API key is never sent
+  // over an unverified TLS connection (no silent MITM surface in the proxied sandbox).
+  const f = proxyFetch(`http://127.0.0.1:${proxyPort}`);
+  await assert.rejects(
+    () =>
+      f(`https://127.0.0.1:${targetPort}/api/v1/forecast`, {
+        method: 'POST',
+        headers: { Authorization: 'Bearer bw_should_never_send' },
+        body: '{}',
+      }),
+    (err) => /self.?signed|certificate|unable to verify/i.test(String(err && err.message)) || /CERT/i.test(String(err && err.code))
+  );
+});
+
 test('only supports https targets', async () => {
   const f = proxyFetch('http://127.0.0.1:1');
   await assert.rejects(() => f('http://example.com/x'), /https targets only/i);
+});
+
+test('SECURITY: caps the response body (a flooding proxy cannot exhaust memory)', async (t) => {
+  if (!haveTls) return t.skip('openssl/setup unavailable');
+  // A hostile/compromised proxy in a default-deny sandbox is the egress point and can
+  // return an arbitrarily large body. Without a cap, proxyFetch buffers it all into
+  // memory until the (15s prod) timeout fires — hundreds of MB of attacker-controlled
+  // data. proxyFetch must abort the read and REJECT (fail closed) once a sane cap is hit,
+  // never resolve with a giant body.
+  const tlsKey = readFileSync(join(certDir, 'key.pem'));
+  const tlsCert = readFileSync(join(certDir, 'cert.pem'));
+  const liveSockets = new Set();
+  const flood = (await import('node:tls')).createServer({ key: tlsKey, cert: tlsCert }, (s) => {
+    liveSockets.add(s);
+    s.on('close', () => liveSockets.delete(s));
+    s.on('error', () => {});
+    s.on('data', () => {
+      s.write('HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n');
+      const block = Buffer.alloc(1024 * 1024, 0x61); // 1 MiB of 'a'
+      const iv = setInterval(() => {
+        if (s.destroyed) return clearInterval(iv);
+        s.write(block); // never sends a complete/closing body
+      }, 1);
+      s.on('close', () => clearInterval(iv));
+    });
+  });
+  flood.listen(0);
+  await once(flood, 'listening');
+  const floodPort = flood.address().port;
+  try {
+    const f = proxyFetch(`http://127.0.0.1:${proxyPort}`, { tls: { rejectUnauthorized: false } });
+    await assert.rejects(
+      () =>
+        f(`https://127.0.0.1:${floodPort}/api/v1/forecast`, {
+          method: 'POST',
+          headers: { Authorization: 'Bearer bw_flood_test' },
+          body: '{}',
+        }),
+      /too large|exceed|max|body/i,
+      'a flooding response must be rejected, not buffered without bound'
+    );
+  } finally {
+    // Force-tear the upstream sockets the local proxy keeps piping, so the
+    // never-ending flood doesn't hold the test event loop open.
+    for (const s of liveSockets) { try { s.destroy(); } catch {} }
+    try { flood.close(); } catch {}
+  }
 });

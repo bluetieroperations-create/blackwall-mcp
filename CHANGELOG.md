@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.1 — 2026-06-01
+
+### Fixed
+- **Bound the proxy response body** (audit M-1). A hostile/compromised proxy in a
+  default-deny sandbox could stream an unbounded body and exhaust memory before
+  the request timeout fired. `proxyFetch` now caps the buffered response at 8 MiB
+  (`BLACKWALL_MAX_RESPONSE_BYTES`, floor 64 KiB) — past the cap it destroys the
+  socket and fails closed.
+
 ## 1.4.0 — 2026-06-01
 
 ### Added
