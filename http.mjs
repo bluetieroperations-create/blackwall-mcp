@@ -9,8 +9,9 @@
  * Multi-tenant: there is NO server-wide API key. Each MCP SESSION carries the
  * caller's own key as `Authorization: Bearer bw_live_…` on its `initialize`
  * request; that key is bound to an isolated server instance for the life of the
- * session. A session opened without a key can still call tools/list, but
- * forecast/observe return a clear "missing key" error. No cross-tenant state.
+ * session and re-verified on every later request. A key is REQUIRED to open a
+ * session — keyless `tools/list` introspection is served by the stdio package,
+ * not this endpoint. No cross-tenant state.
  *
  * Protocol: Streamable HTTP with session management (Mcp-Session-Id header) —
  *   POST   /mcp  initialize (no session id) → opens a session
@@ -103,7 +104,10 @@ function keyHash(key) {
 }
 function keyMatches(boundHash, reqKey) {
   const reqHash = keyHash(reqKey);
-  if (boundHash === null && reqHash === null) return true; // keyless session ↔ keyless request
+  // keyless ↔ keyless: unreachable on this transport since M-1 requires a key to
+  // open a session (boundKeyHash is always non-null here). Kept so a future
+  // refactor that re-introduces keyless sessions stays correct, not a live path.
+  if (boundHash === null && reqHash === null) return true;
   if (boundHash === null || reqHash === null) return false;
   return timingSafeEqual(boundHash, reqHash);
 }

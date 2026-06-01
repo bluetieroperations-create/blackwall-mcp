@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.1 — 2026-06-01
+
+### Fixed
+- Guard the `prepare` script so installing outside a git repo no longer prints
+  a stray `fatal: not in a git directory` error.
+- Corrected the http.mjs header doc to reflect that a key is required to open a
+  session (keyless `tools/list` is served by the stdio package, not the HTTP endpoint).
+
 ## 1.3.0 — 2026-05-31
 
 ### Added
