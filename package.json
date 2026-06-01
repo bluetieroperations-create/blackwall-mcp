@@ -5,7 +5,8 @@
   "description": "BLACK_WALL MCP server — a pre-action risk check your AI agent calls before any irreversible action (send email, move money, run SQL, delete data).",
   "type": "module",
   "bin": {
-    "blackwall-mcp": "index.mjs"
+    "blackwall-mcp": "index.mjs",
+    "blackwall-mcp-http": "http.mjs"
   },
   "exports": {
     ".": "./index.mjs",
@@ -16,11 +17,14 @@
   },
   "files": [
     "index.mjs",
+    "server.mjs",
+    "http.mjs",
     "lib",
     "README.md"
   ],
   "scripts": {
     "start": "node index.mjs",
+    "start:http": "node http.mjs",
     "test": "node --test",
     "prepare": "git config core.hooksPath .githooks",
     "secrets:scan": "gitleaks git --no-banner --config .gitleaks.toml"
@@ -35,7 +39,7 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.12.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^3.23.8"
   },
   "engines": {
