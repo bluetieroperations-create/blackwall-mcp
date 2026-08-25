@@ -1,8 +1,10 @@
 {
   "name": "blackwall-mcp",
-  "version": "1.4.1",
+  "version": "1.4.2",
+  "repository": { "type": "git", "url": "git+https://github.com/bluetieroperations-create/blackwall-mcp.git" },
+  "homepage": "https://blackwalltier.com",
   "mcpName": "com.blackwalltier/blackwall",
-  "description": "BLACK_WALL MCP server — a pre-action risk check your AI agent calls before any irreversible action (send email, move money, run SQL, delete data).",
+  "description": "API-key pre-action risk gate: any irreversible agent action (money, SQL, delete, email).",
   "type": "module",
   "bin": {
     "blackwall-mcp": "index.mjs",
