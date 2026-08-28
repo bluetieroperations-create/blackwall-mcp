@@ -1,3 +1,17 @@
+# Baseline: everything ships LF. `npm publish` from Windows shipped CRLF in
+# 1.4.2, which broke the `#!/usr/bin/env node` shebang on macOS/Linux — the
+# package was dead on arrival there while working fine on Windows, because
+# npm's .cmd shims never read the shebang.
 * text=auto eol=lf
+
+# Explicit, and load-bearing: shell hooks are executed by their shebang, so
+# CRLF breaks them on clone (Linux/CI). Predates the npm issue above.
+.githooks/** text eol=lf
+*.sh  text eol=lf
 *.mjs text eol=lf
 *.md  text eol=lf
+
+# ...but Windows batch files must KEEP CRLF. Last matching rule wins, so these
+# must stay below the `*` line.
+*.bat text eol=crlf
+*.cmd text eol=crlf
